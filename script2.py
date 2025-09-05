@@ -169,6 +169,17 @@ def date_if(prefer_sit,driver):
                 pass
             # driver.quit()。
             return None, 3, driver  # 改进点
+import re
+def wait_until_open(opentime_text):
+
+    match = re.search(r"(\d{1,2}):(\d{1,2})", opentime_text)
+    hour, minute = map(int, match.groups())
+    while True:
+        now = get_beijing_time()
+        if now.hour > hour or (now.hour == hour and now.minute >=minute):
+            break
+        else:
+            time.sleep(0.2)
 def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=500):
     """
     选择座位并预约时间，支持失败重试
@@ -189,6 +200,7 @@ def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=50
     end_time = dir_time[day_type][idx][1]
 
     attempt = 0
+    opentime_text = '系统可预约时间为06:30~21:30'
     while attempt < max_attempts:
         attempt += 1
         print(f"尝试第{attempt}次预约...")
@@ -237,8 +249,12 @@ def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=50
                         submit_button = WebDriverWait(driver, 10).until(
                             EC.element_to_be_clickable((By.CSS_SELECTOR, ".el-button.submit-btn.el-button--default"))
                         )
-                        wait_until_630()
-                        submit_button.click()
+                        #wait_until_630()
+                        if attempt >= 2:
+                            wait_until_open(opentime_text)
+                            submit_button.click()
+                        else:
+                            submit_button.click()
 
                         # 检查是否出现"正在玩命预约中"的元素，并等待其消失
                         try:
@@ -312,6 +328,7 @@ def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=50
                                     print(result_text)
                                     return True
                                 elif "系统可预约时间" in result_text:
+                                    opentime_text = result_text
                                     print(result_text)
                                     break
                             except TimeoutException:
@@ -495,7 +512,7 @@ def date_whether(seat_dict, driver):
                     time_labels = times_roll[0].find_elements(By.TAG_NAME, "label")
                     time_texts = [label.text for label in time_labels]
 
-                    if all(time in full_day_times for time in get_time_range(full_day_times,"15:00","21:00")):
+                    if all(time in time_texts for time in get_time_range(full_day_times,"15:00","21:00")):
                         print(f"找到全天可预约座位: {i}")
                         found_full_day = True
                         day_type = 3
@@ -523,7 +540,7 @@ def date_whether(seat_dict, driver):
                 pass
 
     # 如果没有找到全天可预约的座位，再寻找半天可预约的座位
-    if not found_full_day:
+    '''if not found_full_day:
         print("未找到全天可预约座位，正在寻找半天可预约座位...")
         for i in shuffled_keys:
             try:
@@ -577,7 +594,7 @@ def date_whether(seat_dict, driver):
         By.CSS_SELECTOR, "button.el-button.btn.btn-back.custom.el-button--default"
     )))
     button.click()
-    return None, None, driver
+    return None, None, driver'''
 
 
 # 检查偏好位置全天可约性并预约
@@ -623,7 +640,7 @@ def prefer_whether(account, password, prefer_sit, reading_room, options):
             if times_roll and len(times_roll) > 0:
                 time_labels = times_roll[0].find_elements(By.TAG_NAME, "label")
                 time_texts = [label.text for label in time_labels]
-                if all(time in full_day_times for time in
+                if all(time in time_texts for time in
                        get_time_range(full_day_times, "15:00", "21:00")):
                     print(f"偏好座位{prefer_sit}全天可约")
                     found_full_day = True
@@ -829,7 +846,11 @@ def main():
             print(f"处理账号: {account}，使用临时目录: {profile_dir}")
             options = ChromeOptions()
             options.use_chromium = True
-            options.add_argument('--headless')
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_argument('--disable-extensions')
+            options.add_argument('--disable-plugins')
+            options.add_argument('--disable-images')  # 禁用图片加载，提高速度
+            options.add_argument('--headless=new')
             options.add_argument('--disable-gpu')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
