@@ -171,15 +171,24 @@ def date_if(prefer_sit,driver):
             return None, 3, driver  # 改进点
 import re
 def wait_until_open(opentime_text):
-
+    # 从文本中提取时和分
     match = re.search(r"(\d{1,2}):(\d{1,2})", opentime_text)
     hour, minute = map(int, match.groups())
+
+    # 开放时间
+    opentime = datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    # 提前 20 秒
+    target_time = opentime - timedelta(seconds=20)
+
     while True:
-        now = get_beijing_time()
-        if now.hour > hour or (now.hour == hour and now.minute >=minute):
+        now = datetime.now()
+        if now >= target_time:
+            print(f"已到目标时间：{now.strftime('%H:%M:%S')}")
             break
-        else:
-            time.sleep(0.2)
+        print("未到预定时间")
+        time.sleep(0.1)  # 每 0.1 秒检查一次
+
 def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=500):
     """
     选择座位并预约时间，支持失败重试
@@ -249,11 +258,12 @@ def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=50
                         submit_button = WebDriverWait(driver, 10).until(
                             EC.element_to_be_clickable((By.CSS_SELECTOR, ".el-button.submit-btn.el-button--default"))
                         )
-                        #wait_until_630()
+                        #
                         if attempt >= 2:
                             wait_until_open(opentime_text)
                             submit_button.click()
                         else:
+                            wait_until_630()
                             submit_button.click()
 
                         # 检查是否出现"正在玩命预约中"的元素，并等待其消失
