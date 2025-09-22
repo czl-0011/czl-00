@@ -841,7 +841,7 @@ def main():
         "4032330002": "000000"
     }
     sit_avilable, day_type = None, None
-    users = {"自定义": [account_password4, "三楼理科书库", "96"]}
+    users = {"自定义": [account_password4, "三楼理科书库", "17"]}
     user = "自定义"
     total_accounts = list(users[user][0].items())
     reading_room = users[user][1]
