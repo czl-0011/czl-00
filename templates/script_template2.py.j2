@@ -75,6 +75,7 @@ def idtf_imf(account, password, options):
 
             # 登录流程开始
             while True:
+                time.sleep(2)
                 # 检查账号框是否已填写
                 username_input = driver.find_element(By.CSS_SELECTOR, 'input[placeholder="请输入账号"]')
                 if username_input.get_attribute("value") != account:
@@ -170,23 +171,28 @@ def date_if(prefer_sit,driver):
             # driver.quit()。
             return None, 3, driver  # 改进点
 import re
+from zoneinfo import ZoneInfo
 def wait_until_open(opentime_text):
     # 从文本中提取时和分
     match = re.search(r"(\d{1,2}):(\d{1,2})", opentime_text)
     hour, minute = map(int, match.groups())
 
-    # 开放时间
-    opentime = datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0)
+    # 以北京时间为准
+    beijing = ZoneInfo("Asia/Shanghai")
+    now = datetime.now(beijing)
 
-    # 提前 20 秒
-    target_time = opentime - timedelta(seconds=20)
+    # 开放时间（设为北京时间）
+    opentime = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    # 提前 2 秒
+    target_time = opentime - timedelta(seconds=2)
 
     while True:
-        now = datetime.now()
+        now = datetime.now(beijing)
         if now >= target_time:
-            print(f"已到目标时间：{now.strftime('%H:%M:%S')}")
+            print(f"已到目标时间（北京时间）：{now.strftime('%H:%M:%S')}")
             break
-        print("未到预定时间")
+        #print(f"未到预定时间，北京时间 {now.strftime('%H:%M:%S')}")
         time.sleep(0.1)  # 每 0.1 秒检查一次
 
 def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=500):
@@ -221,7 +227,15 @@ def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=50
                         (By.XPATH, '//div[contains(@class, "seat-name") and text()="{}"]'.format(sit_avilable))
                     )
                 )
-                sit_elem.click()
+                if sit_elem==None:
+                    driver.refresh()
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    screenshot_path = f"screenshots/screenshot_unsuccess_{timestamp}.png"
+                    os.makedirs("screenshots", exist_ok=True)
+                    driver.save_screenshot(screenshot_path)
+                    return True
+                else:
+                    sit_elem.click()
             except Exception as e:
                 print("点击座位失败:", e)
         try:
